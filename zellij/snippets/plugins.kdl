@@ -1,0 +1,9 @@
+// Merge these into your existing plugins/load_plugins blocks.
+plugins {
+    zellij-agent-session-manager location="file:~/.config/zellij/plugins/zellij-agent-session-manager.wasm"
+    zellij-agent-session-manager-store location="file:~/.config/zellij/plugins/zellij-agent-session-manager-store.wasm"
+}
+
+load_plugins {
+    zellij-agent-session-manager-store
+}

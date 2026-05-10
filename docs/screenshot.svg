@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="560" viewBox="0 0 980 560">
+  <rect width="980" height="560" fill="#181818"/>
+  <rect x="28" y="28" width="924" height="504" rx="14" fill="#0f1117" stroke="#3a3a45"/>
+  <rect x="28" y="28" width="248" height="504" rx="14" fill="#151821"/>
+  <rect x="276" y="28" width="1" height="504" fill="#343746"/>
+  <text x="52" y="70" font-family="Fira Code, monospace" font-size="20" fill="#f8f8f2">Agent Sessions</text>
+  <rect x="44" y="92" width="212" height="34" rx="6" fill="#303241"/>
+  <text x="58" y="115" font-family="Fira Code, monospace" font-size="16" fill="#ff6e6e">&gt;</text>
+  <text x="82" y="115" font-family="Fira Code, monospace" font-size="16" fill="#8be9fd">1</text>
+  <text x="112" y="115" font-family="Fira Code, monospace" font-size="16" fill="#ff5555">⚑</text>
+  <text x="145" y="115" font-family="Fira Code, monospace" font-size="16" fill="#f8f8f2">api-refactor</text>
+  <text x="58" y="160" font-family="Fira Code, monospace" font-size="16" fill="#44475a"> </text>
+  <text x="82" y="160" font-family="Fira Code, monospace" font-size="16" fill="#8be9fd">2</text>
+  <text x="112" y="160" font-family="Fira Code, monospace" font-size="16" fill="#f1fa8c">✦ (2)</text>
+  <text x="178" y="160" font-family="Fira Code, monospace" font-size="16" fill="#f8f8f2">billing</text>
+  <text x="58" y="205" font-family="Fira Code, monospace" font-size="16" fill="#bd93f9"> </text>
+  <text x="82" y="205" font-family="Fira Code, monospace" font-size="16" fill="#8be9fd">3</text>
+  <text x="112" y="205" font-family="Fira Code, monospace" font-size="16" fill="#50fa7b">*</text>
+  <text x="145" y="205" font-family="Fira Code, monospace" font-size="16" fill="#6272a4">frontend</text>
+  <text x="58" y="250" font-family="Fira Code, monospace" font-size="16" fill="#f8f8f2"> </text>
+  <text x="82" y="250" font-family="Fira Code, monospace" font-size="16" fill="#8be9fd">4</text>
+  <text x="112" y="250" font-family="Fira Code, monospace" font-size="16" fill="#8be9fd">⚙</text>
+  <text x="145" y="250" font-family="Fira Code, monospace" font-size="16" fill="#f8f8f2">tests</text>
+  <text x="320" y="78" font-family="Fira Code, monospace" font-size="18" fill="#50fa7b">ram@workbench ~/project</text>
+  <text x="320" y="122" font-family="Fira Code, monospace" font-size="16" fill="#f8f8f2">$ opencode</text>
+  <text x="320" y="162" font-family="Fira Code, monospace" font-size="16" fill="#bd93f9">OpenCode is working on your task...</text>
+  <text x="320" y="222" font-family="Fira Code, monospace" font-size="16" fill="#6272a4">Alt+s focuses the sidebar · ? opens help · Alt+Space 1-9 jumps by sidebar order</text>
+  <rect x="318" y="470" width="610" height="28" rx="4" fill="#151821"/>
+  <text x="334" y="490" font-family="Fira Code, monospace" font-size="14" fill="#8be9fd">main</text>
+  <text x="390" y="490" font-family="Fira Code, monospace" font-size="14" fill="#f8f8f2">NORMAL</text>
+  <text x="850" y="490" font-family="Fira Code, monospace" font-size="14" fill="#f8f8f2">13:37</text>
+</svg>
