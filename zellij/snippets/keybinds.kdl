@@ -22,27 +22,27 @@ shared_except "normal" "locked" {
 }
 
 tab {
-    bind "1" { MessagePlugin "zellij-agent-session-manager-store" { name "opencode-sidebar.goto-index"; payload "1"; }; SwitchToMode "normal"; }
-    bind "2" { MessagePlugin "zellij-agent-session-manager-store" { name "opencode-sidebar.goto-index"; payload "2"; }; SwitchToMode "normal"; }
-    bind "3" { MessagePlugin "zellij-agent-session-manager-store" { name "opencode-sidebar.goto-index"; payload "3"; }; SwitchToMode "normal"; }
-    bind "4" { MessagePlugin "zellij-agent-session-manager-store" { name "opencode-sidebar.goto-index"; payload "4"; }; SwitchToMode "normal"; }
-    bind "5" { MessagePlugin "zellij-agent-session-manager-store" { name "opencode-sidebar.goto-index"; payload "5"; }; SwitchToMode "normal"; }
-    bind "6" { MessagePlugin "zellij-agent-session-manager-store" { name "opencode-sidebar.goto-index"; payload "6"; }; SwitchToMode "normal"; }
-    bind "7" { MessagePlugin "zellij-agent-session-manager-store" { name "opencode-sidebar.goto-index"; payload "7"; }; SwitchToMode "normal"; }
-    bind "8" { MessagePlugin "zellij-agent-session-manager-store" { name "opencode-sidebar.goto-index"; payload "8"; }; SwitchToMode "normal"; }
-    bind "9" { MessagePlugin "zellij-agent-session-manager-store" { name "opencode-sidebar.goto-index"; payload "9"; }; SwitchToMode "normal"; }
+    bind "1" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "1"; }; SwitchToMode "normal"; }
+    bind "2" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "2"; }; SwitchToMode "normal"; }
+    bind "3" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "3"; }; SwitchToMode "normal"; }
+    bind "4" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "4"; }; SwitchToMode "normal"; }
+    bind "5" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "5"; }; SwitchToMode "normal"; }
+    bind "6" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "6"; }; SwitchToMode "normal"; }
+    bind "7" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "7"; }; SwitchToMode "normal"; }
+    bind "8" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "8"; }; SwitchToMode "normal"; }
+    bind "9" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "9"; }; SwitchToMode "normal"; }
     bind "n" { NewTab; SwitchToMode "renametab"; TabNameInput 0; }
 }
 
 tmux {
-    bind "1" { MessagePlugin "zellij-agent-session-manager-store" { name "opencode-sidebar.goto-index"; payload "1"; }; SwitchToMode "normal"; }
-    bind "2" { MessagePlugin "zellij-agent-session-manager-store" { name "opencode-sidebar.goto-index"; payload "2"; }; SwitchToMode "normal"; }
-    bind "3" { MessagePlugin "zellij-agent-session-manager-store" { name "opencode-sidebar.goto-index"; payload "3"; }; SwitchToMode "normal"; }
-    bind "4" { MessagePlugin "zellij-agent-session-manager-store" { name "opencode-sidebar.goto-index"; payload "4"; }; SwitchToMode "normal"; }
-    bind "5" { MessagePlugin "zellij-agent-session-manager-store" { name "opencode-sidebar.goto-index"; payload "5"; }; SwitchToMode "normal"; }
-    bind "6" { MessagePlugin "zellij-agent-session-manager-store" { name "opencode-sidebar.goto-index"; payload "6"; }; SwitchToMode "normal"; }
-    bind "7" { MessagePlugin "zellij-agent-session-manager-store" { name "opencode-sidebar.goto-index"; payload "7"; }; SwitchToMode "normal"; }
-    bind "8" { MessagePlugin "zellij-agent-session-manager-store" { name "opencode-sidebar.goto-index"; payload "8"; }; SwitchToMode "normal"; }
-    bind "9" { MessagePlugin "zellij-agent-session-manager-store" { name "opencode-sidebar.goto-index"; payload "9"; }; SwitchToMode "normal"; }
+    bind "1" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "1"; }; SwitchToMode "normal"; }
+    bind "2" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "2"; }; SwitchToMode "normal"; }
+    bind "3" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "3"; }; SwitchToMode "normal"; }
+    bind "4" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "4"; }; SwitchToMode "normal"; }
+    bind "5" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "5"; }; SwitchToMode "normal"; }
+    bind "6" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "6"; }; SwitchToMode "normal"; }
+    bind "7" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "7"; }; SwitchToMode "normal"; }
+    bind "8" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "8"; }; SwitchToMode "normal"; }
+    bind "9" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "9"; }; SwitchToMode "normal"; }
     bind "c" { NewTab; SwitchToMode "renametab"; TabNameInput 0; }
 }

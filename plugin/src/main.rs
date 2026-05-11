@@ -2,9 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use zellij_tile::prelude::*;
 
-const EXPANDED_WIDTH: usize = 28;
-const COLLAPSED_WIDTH: usize = 4;
-const STORE_URL: &str = "zellij-agent-session-manager-store";
+const COLLAPSE_RESIZE_STEPS: usize = 3;
+const DEFAULT_STORE_URL: &str = "zellij-agent-session-manager-store";
 const TOP_PADDING: usize = 1;
 
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
@@ -44,6 +43,7 @@ struct RunningCommand {
 #[derive(Clone, Copy, Debug)]
 struct TabContext {
     tab_id: usize,
+    focused: bool,
 }
 
 #[derive(Clone)]
@@ -100,14 +100,18 @@ impl AlertCounts {
         }
     }
 
-    fn marker(self) -> String {
-        let icon = if self.opencode_waiting > 0 {
+    fn icon(self) -> &'static str {
+        if self.opencode_waiting > 0 {
             "⚑"
         } else if self.opencode_done > 0 {
             "✦"
         } else {
-            "⚙"
-        };
+            "●"
+        }
+    }
+
+    fn marker(self) -> String {
+        let icon = self.icon();
         let total = self.total();
         if total > 1 {
             format!("{} ({})", icon, total)
@@ -164,6 +168,7 @@ impl ZellijPlugin for State {
                     EventType::PermissionRequestResult,
                     EventType::TabUpdate,
                     EventType::PaneUpdate,
+                    EventType::CommandChanged,
                     EventType::Key,
                     EventType::Mouse,
                 ]);
@@ -188,8 +193,8 @@ impl ZellijPlugin for State {
                 }
                 true
             }
-            Event::CommandChanged(pane_id, command, is_foreground, _) => {
-                if self.role == Role::Store && is_foreground {
+            Event::CommandChanged(pane_id, command, _, _) => {
+                if self.role == Role::Store || self.role == Role::Sidebar {
                     self.handle_command_changed(pane_id, command);
                 }
                 true
@@ -283,16 +288,37 @@ impl State {
 
     fn sidebar_pipe(&mut self, message: PipeMessage) -> bool {
         match message.name.as_str() {
+            "opencode.waiting" => {
+                if let Some(payload) = message.payload {
+                    self.apply_agent_payload(&payload, AlertKind::OpencodeWaiting);
+                    self.update_own_title_if_needed();
+                }
+                true
+            }
+            "opencode.done" | "opencode.idle" | "opencode.status" => {
+                if let Some(payload) = message.payload {
+                    self.apply_agent_payload(&payload, AlertKind::OpencodeDone);
+                    self.update_own_title_if_needed();
+                }
+                true
+            }
             "opencode-sidebar.state.sync" => {
                 if let Some(payload) = message.payload {
                     if let Ok(snapshot) = serde_json::from_str::<Snapshot>(&payload) {
-                        self.alerts = snapshot.alerts;
+                        for (tab_id, alert) in snapshot.alerts {
+                            if alert.is_empty() {
+                                self.alerts.remove(&tab_id);
+                            } else {
+                                self.alerts.insert(tab_id, alert);
+                            }
+                        }
+                        self.restore_selected_row();
                     }
                 }
                 true
             }
             "opencode-sidebar.toggle" => {
-                self.toggle_collapsed(0);
+                self.toggle_collapsed();
                 true
             }
             "opencode-sidebar.focus" => {
@@ -303,28 +329,75 @@ impl State {
                 self.activate_selected();
                 true
             }
+            "opencode-sidebar.local-clear-tab" => {
+                if let Some(payload) = message.payload {
+                    if let Ok(tab_id) = payload.parse::<usize>() {
+                        self.alerts.remove(&tab_id);
+                        self.restore_selected_row();
+                        self.update_own_title_if_needed();
+                    }
+                }
+                true
+            }
+            "opencode-sidebar.goto-index" => {
+                if self.is_active_tab_sidebar() {
+                    if let Some(payload) = message.payload {
+                        if let Ok(index) = payload.parse::<usize>() {
+                            self.goto_sidebar_index(index);
+                        }
+                    }
+                }
+                true
+            }
             _ => false,
         }
     }
 
     fn store_after_tabs_changed(&mut self) {
         let live_tab_ids: BTreeSet<usize> = self.tabs.iter().map(|tab| tab.tab_id).collect();
+        let alert_count = self.alerts.len();
         self.alerts
             .retain(|tab_id, _| live_tab_ids.contains(tab_id));
-        if let Some(active_tab_id) = self.active_tab_id() {
-            if self.alerts.remove(&active_tab_id).is_some() {
-                self.broadcast_snapshot();
+
+        let mut changed = self.alerts.len() != alert_count;
+        let active_tab_id = self.active_tab_id();
+        if active_tab_id != self.last_active_tab_id {
+            if let Some(active_tab_id) = active_tab_id {
+                changed |= self.alerts.remove(&active_tab_id).is_some();
             }
+            self.last_active_tab_id = active_tab_id;
+        }
+
+        if changed {
+            self.broadcast_snapshot();
+            self.update_own_title_if_needed();
         }
     }
 
     fn sidebar_after_state_update(&mut self) {
         let active_position = self.active_tab_position();
         if active_position != self.last_active_tab_position() {
+            let previous_active_tab_id = self.last_active_tab_id;
+            let active_tab_id = self.active_tab_id();
             self.select_active_tab_row();
-            self.last_active_tab_id = self.active_tab_id();
+            self.last_active_tab_id = active_tab_id;
+            if let Some(active_tab_id) = active_tab_id {
+                if Some(active_tab_id) != previous_active_tab_id
+                    || self.alerts.contains_key(&active_tab_id)
+                {
+                    self.clear_local_and_store_tab_alert(active_tab_id);
+                }
+            }
         } else if let Some(position) = self.selected_tab_position {
             self.select_tab_row(position);
+        }
+
+        if let (Some(active_position), Some(active_tab_id)) =
+            (active_position, self.active_tab_id())
+        {
+            if self.own_pane_in_tab(active_position) && self.alerts.contains_key(&active_tab_id) {
+                self.clear_local_and_store_tab_alert(active_tab_id);
+            }
         }
 
         let own_focused = active_position
@@ -373,16 +446,19 @@ impl State {
         let Some(tab_context) = self.tab_context_for_pane_key(&normalize_pane_key(&pane_id)) else {
             return;
         };
-        let should_alert = self
-            .active_tab_id()
-            .map(|active_tab_id| tab_context.tab_id != active_tab_id)
-            .unwrap_or(true);
+        let kind = match payload.kind.as_deref() {
+            Some("waiting") => AlertKind::OpencodeWaiting,
+            Some("done") => AlertKind::OpencodeDone,
+            _ => fallback_kind,
+        };
+        let should_alert = if matches!(kind, AlertKind::OpencodeDone | AlertKind::OpencodeWaiting) {
+            !(tab_context.focused && self.active_tab_id() == Some(tab_context.tab_id))
+        } else {
+            self.active_tab_id()
+                .map(|active_tab_id| tab_context.tab_id != active_tab_id)
+                .unwrap_or(true)
+        };
         if should_alert {
-            let kind = match payload.kind.as_deref() {
-                Some("waiting") => AlertKind::OpencodeWaiting,
-                Some("done") => AlertKind::OpencodeDone,
-                _ => fallback_kind,
-            };
             self.bump_tab_alert(tab_context.tab_id, kind);
         }
     }
@@ -427,12 +503,15 @@ impl State {
 
     fn bump_tab_alert(&mut self, tab_id: usize, kind: AlertKind) {
         self.alerts.entry(tab_id).or_default().bump(kind);
+        self.restore_selected_row();
         self.broadcast_snapshot();
+        self.update_own_title_if_needed();
     }
 
     fn clear_tab_alert(&mut self, tab_id: usize) {
         if self.alerts.remove(&tab_id).is_some() {
             self.broadcast_snapshot();
+            self.update_own_title_if_needed();
         }
     }
 
@@ -441,7 +520,31 @@ impl State {
             return;
         };
         match row {
-            Row::Tab { position, .. } => switch_tab_to((position + 1) as u32),
+            Row::Tab {
+                position, tab_id, ..
+            } => {
+                self.clear_local_and_store_tab_alert(tab_id);
+                switch_tab_to((position + 1) as u32);
+            }
+        }
+    }
+
+    fn clear_local_and_store_tab_alert(&mut self, tab_id: usize) {
+        self.alerts.remove(&tab_id);
+        self.restore_selected_row();
+        self.send_clear_tab(tab_id);
+        self.broadcast_local_clear_tab(tab_id);
+        self.update_own_title_if_needed();
+    }
+
+    fn restore_selected_row(&mut self) {
+        if let Some(position) = self.selected_tab_position {
+            self.select_tab_row(position);
+            return;
+        }
+        let row_count = self.rows().len();
+        if self.selected >= row_count {
+            self.selected = row_count.saturating_sub(1);
         }
     }
 
@@ -465,12 +568,16 @@ impl State {
 
     fn request_state(&self) {
         pipe_message_to_plugin(
-            MessageToPlugin::new("opencode-sidebar.state.request").with_plugin_url(STORE_URL),
+            MessageToPlugin::new("opencode-sidebar.state.request")
+                .with_plugin_url(self.store_url()),
         );
     }
 
     fn request_state_once(&mut self) {
         if self.requested_initial_state {
+            return;
+        }
+        if self.own_plugin_url().is_none() {
             return;
         }
         self.requested_initial_state = true;
@@ -533,7 +640,7 @@ impl State {
                     ..
                 } => {
                     let selected = index == self.selected;
-                    let marker = if selected { ">" } else { " " };
+                    let marker = if selected { "›" } else { " " };
                     if *alert_section {
                         let icon = alert.marker();
                         print_row(
@@ -547,7 +654,7 @@ impl State {
                             selected,
                         );
                     } else {
-                        let active_marker = if *active { "*" } else { " " };
+                        let active_marker = if *active { "▸" } else { " " };
                         let name_style = if *active {
                             "\u{1b}[34;1m"
                         } else {
@@ -585,28 +692,13 @@ impl State {
         println!("{}", dim(&fit(" Alerts", cols)));
         println!("{}", fit(" ⚑ input needed", cols));
         println!("{}", fit(" ✦ answer ready", cols));
-        println!("{}", fit(" ⚙ command done", cols));
+        println!("{}", fit(" ● command done", cols));
     }
 
     fn render_collapsed(&self, cols: usize) {
-        for _ in 0..TOP_PADDING {
-            println!("{}", fit("", cols));
+        if let Some(icon) = self.collapsed_alert_icon() {
+            println!("{}", fit(icon, cols));
         }
-        let unread = self.unread_count();
-        let label = if unread > 0 {
-            format!("!{}", unread)
-        } else {
-            "OC".to_string()
-        };
-        println!("{}", fit(&label, cols));
-        let active = self
-            .tabs
-            .iter()
-            .find(|tab| tab.active)
-            .map(|tab| tab.name.clone())
-            .unwrap_or_else(|| "tab".to_string());
-        println!("{}", fit(&active, cols));
-        println!("{}", fit("b> ", cols));
     }
 
     fn handle_key(&mut self, key: KeyWithModifier) {
@@ -622,7 +714,7 @@ impl State {
             BareKey::Char('k') | BareKey::Up => self.move_selection(-1),
             BareKey::Enter => self.activate_selected(),
             BareKey::Char('c') => self.clear_selected_alert(),
-            BareKey::Char('b') => self.toggle_collapsed(0),
+            BareKey::Char('b') => self.toggle_collapsed(),
             BareKey::Char('?') => self.show_help = true,
             BareKey::Esc | BareKey::Char('q') => self.focus_last_work_pane(),
             _ => {}
@@ -633,7 +725,7 @@ impl State {
         match mouse {
             Mouse::LeftClick(line, _) => {
                 if self.collapsed {
-                    self.toggle_collapsed(0);
+                    self.toggle_collapsed();
                     return;
                 }
                 if self.show_help {
@@ -661,7 +753,7 @@ impl State {
             Row::Tab {
                 position, tab_id, ..
             } => {
-                self.send_clear_tab(tab_id);
+                self.clear_local_and_store_tab_alert(tab_id);
                 self.select_tab_row(position);
                 switch_tab_to((position + 1) as u32);
                 let target = self
@@ -695,39 +787,33 @@ impl State {
         let Some(Row::Tab { tab_id, .. }) = rows.get(self.selected).cloned() else {
             return;
         };
-        self.send_clear_tab(tab_id);
+        self.clear_local_and_store_tab_alert(tab_id);
     }
 
     fn send_clear_tab(&self, tab_id: usize) {
         pipe_message_to_plugin(
             MessageToPlugin::new("opencode-sidebar.clear-tab")
-                .with_plugin_url(STORE_URL)
+                .with_plugin_url(self.store_url())
                 .with_payload(tab_id.to_string()),
         );
     }
 
-    fn toggle_collapsed(&mut self, current_cols: usize) {
+    fn broadcast_local_clear_tab(&self, tab_id: usize) {
+        pipe_message_to_plugin(
+            MessageToPlugin::new("opencode-sidebar.local-clear-tab")
+                .with_payload(tab_id.to_string()),
+        );
+    }
+
+    fn toggle_collapsed(&mut self) {
         self.collapsed = !self.collapsed;
         if let Some(PaneId::Plugin(id)) = self.own_pane_id {
-            let current = if current_cols > 0 {
-                current_cols
-            } else if self.collapsed {
-                EXPANDED_WIDTH
-            } else {
-                COLLAPSED_WIDTH
-            };
-            let target = if self.collapsed {
-                COLLAPSED_WIDTH
-            } else {
-                EXPANDED_WIDTH
-            };
-            let resize = if current > target {
+            let resize = if self.collapsed {
                 Resize::Decrease
             } else {
                 Resize::Increase
             };
-            let iterations = current.abs_diff(target).saturating_add(2).min(80);
-            for _ in 0..iterations {
+            for _ in 0..COLLAPSE_RESIZE_STEPS {
                 resize_pane_with_id(
                     ResizeStrategy {
                         resize,
@@ -760,6 +846,12 @@ impl State {
         if self.own_pane_in_tab(active_position) {
             focus_pane_with_id(own_pane_id, false, false);
         }
+    }
+
+    fn is_active_tab_sidebar(&self) -> bool {
+        self.active_tab_position()
+            .map(|position| self.own_pane_in_tab(position))
+            .unwrap_or(false)
     }
 
     fn select_active_tab_row(&mut self) {
@@ -804,14 +896,14 @@ impl State {
 
     fn tab_context_for_pane_key(&self, key: &str) -> Option<TabContext> {
         self.panes.iter().find_map(|(position, panes)| {
-            if panes.iter().any(|pane| pane_key(&pane_id(pane)) == key) {
-                self.tabs
-                    .iter()
-                    .find(|tab| tab.position == *position)
-                    .map(|tab| TabContext { tab_id: tab.tab_id })
-            } else {
-                None
-            }
+            let pane = panes.iter().find(|pane| pane_key(&pane_id(pane)) == key)?;
+            self.tabs
+                .iter()
+                .find(|tab| tab.position == *position)
+                .map(|tab| TabContext {
+                    tab_id: tab.tab_id,
+                    focused: pane.is_focused,
+                })
         })
     }
 
@@ -840,6 +932,31 @@ impl State {
             .unwrap_or(false)
     }
 
+    fn own_plugin_url(&self) -> Option<&str> {
+        self.panes
+            .values()
+            .flatten()
+            .find(|pane| self.is_own_pane(pane))
+            .and_then(|pane| pane.plugin_url.as_deref())
+    }
+
+    fn store_url(&self) -> String {
+        let Some(own_url) = self.own_plugin_url() else {
+            return DEFAULT_STORE_URL.to_string();
+        };
+        if own_url.contains("opencode-sidebar") {
+            return own_url.replacen("opencode-sidebar", "opencode-sidebar-store", 1);
+        }
+        if own_url.contains("zellij-agent-session-manager") {
+            return own_url.replacen(
+                "zellij-agent-session-manager",
+                "zellij-agent-session-manager-store",
+                1,
+            );
+        }
+        DEFAULT_STORE_URL.to_string()
+    }
+
     fn is_work_pane(&self, pane: &PaneInfo) -> bool {
         !pane.is_plugin && !self.is_own_pane(pane)
     }
@@ -850,6 +967,16 @@ impl State {
 
     fn unread_count(&self) -> usize {
         self.alerts.values().map(|alert| alert.total()).sum()
+    }
+
+    fn collapsed_alert_icon(&self) -> Option<&'static str> {
+        let mut total = AlertCounts::default();
+        for alert in self.alerts.values() {
+            total.generic += alert.generic;
+            total.opencode_done += alert.opencode_done;
+            total.opencode_waiting += alert.opencode_waiting;
+        }
+        (!total.is_empty()).then_some(total.icon())
     }
 
     fn update_own_title_if_needed(&mut self) {
