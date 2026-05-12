@@ -1,25 +1,69 @@
 layout {
     default_tab_template {
         pane split_direction="vertical" {
-            pane size="20%" borderless=true name="agent-sidebar" {
+            pane size="33%" borderless=true name="agent-sidebar" {
                 plugin location="zellij-agent-session-manager"
             }
             children
         }
         pane size=1 borderless=true {
-            plugin location="zjstatus"
+            plugin location="zjstatus" {
+                format_left "{mode} {tabs}"
+                format_center ""
+                format_right " {session} "
+                format_space " "
+                border_enabled "false"
+
+                mode_normal "#[fg=green,bold]N"
+                mode_locked "#[fg=red,bold]L"
+                mode_tmux "#[fg=cyan,bold]T"
+
+                tab_normal ""
+                tab_normal_fullscreen ""
+                tab_normal_sync ""
+                tab_active "#[fg=blue,bold]{name}{floating_indicator}"
+                tab_active_fullscreen "#[fg=yellow,bold]{name}{fullscreen_indicator}"
+                tab_active_sync "#[fg=green,bold]{name}{sync_indicator}"
+                tab_separator ""
+
+                tab_sync_indicator " [S]"
+                tab_fullscreen_indicator " [F]"
+                tab_floating_indicator " [*]"
+            }
         }
     }
 
     new_tab_template {
         pane split_direction="vertical" {
-            pane size="20%" borderless=true name="agent-sidebar" {
+            pane size="33%" borderless=true name="agent-sidebar" {
                 plugin location="zellij-agent-session-manager"
             }
             pane focus=true
         }
         pane size=1 borderless=true {
-            plugin location="zjstatus"
+            plugin location="zjstatus" {
+                format_left "{mode} {tabs}"
+                format_center ""
+                format_right " {session} "
+                format_space " "
+                border_enabled "false"
+
+                mode_normal "#[fg=green,bold]N"
+                mode_locked "#[fg=red,bold]L"
+                mode_tmux "#[fg=cyan,bold]T"
+
+                tab_normal ""
+                tab_normal_fullscreen ""
+                tab_normal_sync ""
+                tab_active "#[fg=blue,bold]{name}{floating_indicator}"
+                tab_active_fullscreen "#[fg=yellow,bold]{name}{fullscreen_indicator}"
+                tab_active_sync "#[fg=green,bold]{name}{sync_indicator}"
+                tab_separator ""
+
+                tab_sync_indicator " [S]"
+                tab_fullscreen_indicator " [F]"
+                tab_floating_indicator " [*]"
+            }
         }
     }
 

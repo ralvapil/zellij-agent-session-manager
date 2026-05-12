@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use zellij_tile::prelude::*;
 
-const COLLAPSE_RESIZE_STEPS: usize = 3;
 const DEFAULT_STORE_URL: &str = "zellij-agent-session-manager-store";
 const TOP_PADDING: usize = 1;
 
@@ -23,7 +22,6 @@ struct State {
     known_sidebars: BTreeSet<u32>,
     selected: usize,
     selected_tab_position: Option<usize>,
-    collapsed: bool,
     own_pane_id: Option<PaneId>,
     last_focused_pane: Option<PaneId>,
     last_active_tab_id: Option<usize>,
@@ -161,14 +159,12 @@ impl ZellijPlugin for State {
                 request_permission(&[
                     PermissionType::ReadApplicationState,
                     PermissionType::ChangeApplicationState,
-                    PermissionType::ReadCliPipes,
                     PermissionType::MessageAndLaunchOtherPlugins,
                 ]);
                 subscribe(&[
                     EventType::PermissionRequestResult,
                     EventType::TabUpdate,
                     EventType::PaneUpdate,
-                    EventType::CommandChanged,
                     EventType::Key,
                     EventType::Mouse,
                 ]);
@@ -194,10 +190,12 @@ impl ZellijPlugin for State {
                 true
             }
             Event::CommandChanged(pane_id, command, _, _) => {
-                if self.role == Role::Store || self.role == Role::Sidebar {
+                if self.role == Role::Store {
                     self.handle_command_changed(pane_id, command);
+                    true
+                } else {
+                    false
                 }
-                true
             }
             Event::Key(key) => {
                 if self.role == Role::Sidebar {
@@ -236,11 +234,7 @@ impl ZellijPlugin for State {
         if self.role == Role::Store {
             return;
         }
-        if self.collapsed {
-            self.render_collapsed(cols);
-        } else {
-            self.render_expanded(cols);
-        }
+        self.render_expanded(cols);
     }
 }
 
@@ -288,37 +282,18 @@ impl State {
 
     fn sidebar_pipe(&mut self, message: PipeMessage) -> bool {
         match message.name.as_str() {
-            "opencode.waiting" => {
-                if let Some(payload) = message.payload {
-                    self.apply_agent_payload(&payload, AlertKind::OpencodeWaiting);
-                    self.update_own_title_if_needed();
-                }
-                true
-            }
-            "opencode.done" | "opencode.idle" | "opencode.status" => {
-                if let Some(payload) = message.payload {
-                    self.apply_agent_payload(&payload, AlertKind::OpencodeDone);
-                    self.update_own_title_if_needed();
-                }
-                true
-            }
             "opencode-sidebar.state.sync" => {
                 if let Some(payload) = message.payload {
                     if let Ok(snapshot) = serde_json::from_str::<Snapshot>(&payload) {
-                        for (tab_id, alert) in snapshot.alerts {
-                            if alert.is_empty() {
-                                self.alerts.remove(&tab_id);
-                            } else {
-                                self.alerts.insert(tab_id, alert);
-                            }
-                        }
+                        self.alerts = snapshot
+                            .alerts
+                            .into_iter()
+                            .filter(|(_, alert)| !alert.is_empty())
+                            .collect();
                         self.restore_selected_row();
+                        self.update_own_title_if_needed();
                     }
                 }
-                true
-            }
-            "opencode-sidebar.toggle" => {
-                self.toggle_collapsed();
                 true
             }
             "opencode-sidebar.focus" => {
@@ -685,7 +660,6 @@ impl State {
         println!("{}", fit(" j/k, arrows  move", cols));
         println!("{}", fit(" Enter       focus tab", cols));
         println!("{}", fit(" c           clear alert", cols));
-        println!("{}", fit(" b           collapse", cols));
         println!("{}", fit(" q/Esc       return", cols));
         println!("{}", fit(" ?           close help", cols));
         println!("{}", fit("", cols));
@@ -693,12 +667,6 @@ impl State {
         println!("{}", fit(" ⚑ input needed", cols));
         println!("{}", fit(" ✦ answer ready", cols));
         println!("{}", fit(" ● command done", cols));
-    }
-
-    fn render_collapsed(&self, cols: usize) {
-        if let Some(icon) = self.collapsed_alert_icon() {
-            println!("{}", fit(icon, cols));
-        }
     }
 
     fn handle_key(&mut self, key: KeyWithModifier) {
@@ -714,7 +682,6 @@ impl State {
             BareKey::Char('k') | BareKey::Up => self.move_selection(-1),
             BareKey::Enter => self.activate_selected(),
             BareKey::Char('c') => self.clear_selected_alert(),
-            BareKey::Char('b') => self.toggle_collapsed(),
             BareKey::Char('?') => self.show_help = true,
             BareKey::Esc | BareKey::Char('q') => self.focus_last_work_pane(),
             _ => {}
@@ -724,10 +691,6 @@ impl State {
     fn handle_mouse(&mut self, mouse: Mouse) {
         match mouse {
             Mouse::LeftClick(line, _) => {
-                if self.collapsed {
-                    self.toggle_collapsed();
-                    return;
-                }
                 if self.show_help {
                     self.show_help = false;
                     return;
@@ -803,27 +766,6 @@ impl State {
             MessageToPlugin::new("opencode-sidebar.local-clear-tab")
                 .with_payload(tab_id.to_string()),
         );
-    }
-
-    fn toggle_collapsed(&mut self) {
-        self.collapsed = !self.collapsed;
-        if let Some(PaneId::Plugin(id)) = self.own_pane_id {
-            let resize = if self.collapsed {
-                Resize::Decrease
-            } else {
-                Resize::Increase
-            };
-            for _ in 0..COLLAPSE_RESIZE_STEPS {
-                resize_pane_with_id(
-                    ResizeStrategy {
-                        resize,
-                        direction: Some(Direction::Right),
-                        invert_on_boundaries: false,
-                    },
-                    PaneId::Plugin(id),
-                );
-            }
-        }
     }
 
     fn focus_last_work_pane(&self) {
@@ -969,16 +911,6 @@ impl State {
         self.alerts.values().map(|alert| alert.total()).sum()
     }
 
-    fn collapsed_alert_icon(&self) -> Option<&'static str> {
-        let mut total = AlertCounts::default();
-        for alert in self.alerts.values() {
-            total.generic += alert.generic;
-            total.opencode_done += alert.opencode_done;
-            total.opencode_waiting += alert.opencode_waiting;
-        }
-        (!total.is_empty()).then_some(total.icon())
-    }
-
     fn update_own_title_if_needed(&mut self) {
         if let Some(PaneId::Plugin(id)) = self.own_pane_id {
             let unread = self.unread_count();
@@ -1071,15 +1003,39 @@ fn print_row(parts: Vec<(String, &str)>, cols: usize, selected: bool) {
     let mut line = String::new();
     line.push_str(bg);
     for (text, style) in parts {
+        if visible_len >= cols {
+            break;
+        }
+        let remaining = cols - visible_len;
+        let original_len = text.chars().count();
+        let text = truncate_with_dots(&text, remaining);
         visible_len += text.chars().count();
         line.push_str(style);
         line.push_str(&text);
         line.push_str("\u{1b}[0m");
         line.push_str(bg);
+        if original_len > remaining {
+            break;
+        }
     }
     if visible_len < cols {
         line.push_str(&" ".repeat(cols - visible_len));
     }
     line.push_str("\u{1b}[0m");
     println!("{}", line);
+}
+
+fn truncate_with_dots(text: &str, cols: usize) -> String {
+    if text.chars().count() <= cols {
+        return text.to_string();
+    }
+    if cols == 0 {
+        return String::new();
+    }
+    if cols <= 2 {
+        return ".".repeat(cols);
+    }
+    let mut out: String = text.chars().take(cols - 2).collect();
+    out.push_str("..");
+    out
 }

@@ -1,24 +1,9 @@
 // Merge these bindings into the relevant keybind modes.
+// This example uses Ctrl Space to enter tmux mode as a Control prefix.
 // Adjust keys if they conflict with your config.
 
 normal {
-    bind "Alt s" { MoveFocus "left"; }
-    bind "Alt b" {
-        MessagePlugin "zellij-agent-session-manager" {
-            name "opencode-sidebar.toggle"
-            payload "x"
-        }
-    }
-}
-
-shared_except "normal" "locked" {
-    bind "Alt s" { MoveFocus "left"; }
-    bind "Alt b" {
-        MessagePlugin "zellij-agent-session-manager" {
-            name "opencode-sidebar.toggle"
-            payload "x"
-        }
-    }
+    bind "Ctrl Space" { SwitchToMode "tmux"; }
 }
 
 tab {
@@ -32,9 +17,11 @@ tab {
     bind "8" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "8"; }; SwitchToMode "normal"; }
     bind "9" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "9"; }; SwitchToMode "normal"; }
     bind "n" { NewTab; SwitchToMode "renametab"; TabNameInput 0; }
+    bind "x" { CloseTab; SwitchToMode "normal"; }
 }
 
 tmux {
+    bind "s" { MoveFocus "left"; SwitchToMode "normal"; }
     bind "1" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "1"; }; SwitchToMode "normal"; }
     bind "2" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "2"; }; SwitchToMode "normal"; }
     bind "3" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "3"; }; SwitchToMode "normal"; }
@@ -45,4 +32,6 @@ tmux {
     bind "8" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "8"; }; SwitchToMode "normal"; }
     bind "9" { MessagePlugin "zellij-agent-session-manager" { name "opencode-sidebar.goto-index"; payload "9"; }; SwitchToMode "normal"; }
     bind "c" { NewTab; SwitchToMode "renametab"; TabNameInput 0; }
+    bind "&" { CloseTab; SwitchToMode "normal"; }
+    bind "x" { CloseFocus; SwitchToMode "normal"; }
 }

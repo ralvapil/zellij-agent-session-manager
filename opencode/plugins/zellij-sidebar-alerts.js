@@ -36,11 +36,21 @@ export const ZellijSidebarAlerts = async ({ $, directory }) => {
       }
       writeAlerts(alerts)
 
-      const payload = JSON.stringify(alerts.agents[paneId]).replace(/'/g, `'"'"'`)
+      const payload = JSON.stringify(alerts.agents[paneId])
       const pipeName = kind === "waiting" ? "opencode.waiting" : "opencode.done"
-      await $`sh -lc ${`zellij action pipe --name ${pipeName} -- '${payload}' >/dev/null 2>&1 &`}`
+      await $`sh -lc ${zellijPipeCommand(pipeName, payload)}`
     },
   }
+}
+
+function zellijPipeCommand(pipeName, payload) {
+  const session = process.env.ZELLIJ_SESSION_NAME
+  const sessionArgs = session ? ` --session ${shellQuote(session)}` : ""
+  return `zellij${sessionArgs} action pipe --name ${shellQuote(pipeName)} -- ${shellQuote(payload)}`
+}
+
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, `'\\''`)}'`
 }
 
 function readAlerts() {

@@ -11,7 +11,7 @@ This treats one Zellij session as a workbench and each Zellij tab as a task/sess
 - Persistent Zellij sidebar per tab.
 - Zellij tabs act as task/session rows.
 - Alert rows are ordered above normal tabs.
-- `Alt+Space` then `1-9` can jump by sidebar visual order.
+- `Ctrl+Space` then `1-9` can jump by sidebar visual order.
 - Generic terminal command completion alerts when a command finishes while its tab is unfocused.
 - OpenCode-specific alert markers:
   - `⚑` OpenCode needs input.
@@ -23,6 +23,7 @@ This treats one Zellij session as a workbench and each Zellij tab as a task/sess
 
 - Zellij `0.44.x` or compatible.
 - Rust toolchain with `wasm32-wasip1` target for building.
+- `zjstatus` plugin alias if using the sample layout status bar.
 - OpenCode if you want OpenCode-specific agent alerts.
 
 Install Rust target:
@@ -78,7 +79,6 @@ The sidebar plugin needs:
 
 - `ReadApplicationState`
 - `ChangeApplicationState`
-- `ReadCliPipes`
 - `MessageAndLaunchOtherPlugins`
 
 ## Sidebar Keys
@@ -89,17 +89,18 @@ When focused on the sidebar:
 j/k or arrows  move selection
 Enter          focus selected tab
 c              clear selected alert
-b              collapse sidebar
 q or Esc       return to last work pane
 ?              show/close help
 ```
 
-Global bindings from the snippet:
+Global bindings from the snippet, using `Ctrl+Space` as the Control prefix:
 
 ```text
-Alt+s          focus sidebar
-Alt+b          collapse/expand sidebar
-Alt+Space 1-9  jump by sidebar visual order
+Ctrl+Space s    focus sidebar
+Ctrl+Space 1-9  jump by sidebar visual order
+Ctrl+Space c    new tab and rename it
+Ctrl+Space x    close focused pane
+Ctrl+Space &    close current tab
 ```
 
 ## How Alerts Work
@@ -139,4 +140,4 @@ dist/zellij-agent-session-manager-store.wasm
 
 - Restart Zellij after changing plugin aliases, keybinds, or `load_plugins`.
 - Restart OpenCode after installing/updating the OpenCode plugin.
-- The sample layout assumes a `zjstatus` plugin alias exists. Replace it with `zellij:status-bar` or your preferred status plugin if needed.
+- The sample layout uses a configured `zjstatus` bottom bar. Replace it with `zellij:status-bar` or remove it if you do not use `zjstatus`.
