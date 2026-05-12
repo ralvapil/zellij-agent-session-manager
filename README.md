@@ -10,13 +10,13 @@ This treats one Zellij session as a workbench and each Zellij tab as a task/sess
 
 - Persistent Zellij sidebar per tab.
 - Zellij tabs act as task/session rows.
-- Alert rows are ordered above normal tabs.
+- Alert rows are grouped above normal tabs with spacing between groups.
 - `Ctrl+Space` then `1-9` can jump by sidebar visual order.
 - Generic terminal command completion alerts when a command finishes while its tab is unfocused.
-- OpenCode-specific alert markers:
+- Sidebar markers:
   - `⚑` OpenCode needs input.
   - `✦` OpenCode answer is ready / idle.
-  - `⚙` generic terminal command finished.
+  - `●` command finished while unfocused.
 - `?` help view inside the sidebar.
 
 ## Requirements
@@ -111,7 +111,7 @@ Generic terminal command alerts come from Zellij `CommandChanged` events:
 
 ```text
 foreground command starts -> tracked
-foreground command returns to shell while tab is unfocused -> ⚙ alert
+foreground command returns to shell while tab is unfocused -> ● alert
 ```
 
 OpenCode alerts come from `opencode/plugins/zellij-sidebar-alerts.js`:

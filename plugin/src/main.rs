@@ -604,7 +604,13 @@ impl State {
             println!("{}", fit("", cols));
         }
 
-        for (index, row) in self.rows().iter().enumerate() {
+        let rows = self.rows();
+        let gap_after = alert_gap_after(&rows);
+
+        for (index, row) in rows.iter().enumerate() {
+            if gap_after == Some(index) {
+                println!("{}", fit("", cols));
+            }
             let display_index = index + 1;
             match row {
                 Row::Tab {
@@ -697,7 +703,10 @@ impl State {
                 }
                 let row_index = line - TOP_PADDING as isize;
                 if row_index >= 0 {
-                    self.selected = row_index as usize;
+                    let Some(row_index) = self.visual_row_to_row_index(row_index as usize) else {
+                        return;
+                    };
+                    self.selected = row_index;
                     self.activate_selected();
                 }
             }
@@ -742,6 +751,21 @@ impl State {
         }
         if let Some(Row::Tab { position, .. }) = self.rows().get(self.selected) {
             self.selected_tab_position = Some(*position);
+        }
+    }
+
+    fn visual_row_to_row_index(&self, visual_row: usize) -> Option<usize> {
+        let rows = self.rows();
+        let Some(gap_after) = alert_gap_after(&rows) else {
+            return Some(visual_row);
+        };
+        if visual_row == gap_after {
+            return None;
+        }
+        if visual_row > gap_after {
+            Some(visual_row - 1)
+        } else {
+            Some(visual_row)
         }
     }
 
@@ -1038,4 +1062,19 @@ fn truncate_with_dots(text: &str, cols: usize) -> String {
     let mut out: String = text.chars().take(cols - 2).collect();
     out.push_str("..");
     out
+}
+
+fn alert_gap_after(rows: &[Row]) -> Option<usize> {
+    for index in 1..rows.len() {
+        let previous_alert_section = match &rows[index - 1] {
+            Row::Tab { alert_section, .. } => *alert_section,
+        };
+        let alert_section = match &rows[index] {
+            Row::Tab { alert_section, .. } => *alert_section,
+        };
+        if previous_alert_section && !alert_section {
+            return Some(index);
+        }
+    }
+    None
 }
