@@ -189,9 +189,9 @@ impl ZellijPlugin for State {
                 }
                 true
             }
-            Event::CommandChanged(pane_id, command, _, _) => {
+            Event::CommandChanged(pane_id, command, is_foreground, _) => {
                 if self.role == Role::Store {
-                    self.handle_command_changed(pane_id, command);
+                    self.handle_command_changed(pane_id, command, is_foreground);
                     true
                 } else {
                     false
@@ -438,13 +438,23 @@ impl State {
         }
     }
 
-    fn handle_command_changed(&mut self, pane_id: PaneId, command: Vec<String>) {
-        let command = command_display(&command);
-        if command.is_empty() {
+    fn handle_command_changed(
+        &mut self,
+        pane_id: PaneId,
+        command: Vec<String>,
+        is_foreground: bool,
+    ) {
+        if !is_foreground {
             return;
         }
 
         let key = pane_key(&pane_id);
+        let command = command_display(&command);
+        if command.is_empty() {
+            self.running_commands.remove(&key);
+            return;
+        }
+
         let tab_context = self.tab_context_for_pane_key(&key);
         let current_is_shell = is_shell_command(&command);
 
