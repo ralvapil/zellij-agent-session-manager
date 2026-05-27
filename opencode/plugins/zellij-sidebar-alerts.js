@@ -6,17 +6,18 @@ const stateDir = process.env.XDG_STATE_HOME
   ? path.join(process.env.XDG_STATE_HOME, "opencode-zellij")
   : path.join(os.homedir(), ".local", "state", "opencode-zellij")
 const alertsFile = path.join(stateDir, "alerts.json")
+const waitingEventTypes = new Set(["permission.asked", "question.asked"])
 
 export const ZellijSidebarAlerts = async ({ $, directory }) => {
   return {
     event: async ({ event }) => {
-      if (event.type !== "session.idle" && event.type !== "question.asked") return
+      if (event.type !== "session.idle" && !waitingEventTypes.has(event.type)) return
       if (!process.env.ZELLIJ) return
 
       const paneId = normalizePaneId(process.env.ZELLIJ_PANE_ID)
       if (!paneId) return
 
-      const kind = event.type === "question.asked" ? "waiting" : "done"
+      const kind = waitingEventTypes.has(event.type) ? "waiting" : "done"
       const status = kind === "waiting" ? "waiting" : "idle"
       const message = kind === "waiting" ? "OpenCode needs input" : "OpenCode finished"
 

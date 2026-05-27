@@ -14,7 +14,7 @@ This treats one Zellij session as a workbench and each Zellij tab as a task/sess
 - `Ctrl+Space` then `1-9` can jump by sidebar visual order.
 - Generic terminal command completion alerts when a command finishes while its tab is unfocused.
 - Sidebar markers:
-  - `⚑` OpenCode needs input.
+  - `⚑` OpenCode needs input, including permission prompts.
   - `✦` OpenCode answer is ready / idle.
   - `●` command finished while unfocused.
 - `?` help view inside the sidebar.
@@ -117,8 +117,9 @@ foreground command returns to shell while tab is unfocused -> ● alert
 OpenCode alerts come from `opencode/plugins/zellij-sidebar-alerts.js`:
 
 ```text
-question.asked -> ⚑ waiting/input needed
-session.idle   -> ✦ answer ready
+question.asked   -> ⚑ waiting/input needed
+permission.asked -> ⚑ waiting/input needed
+session.idle     -> ✦ answer ready
 ```
 
 Alerts clear when visiting/focusing the tab.
